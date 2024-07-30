@@ -1,12 +1,12 @@
-<html lang="en-us"><script src="https://pygame-web.github.io/archives/0.3/pythons.js" type=module id="site" data-src="vtx,fs,snd,gui" async defer>#<!--
+<html lang="en-us"><script src="https://pygame-web.github.io/archives/0.9/pythons.js" type=module id=site data-LINES=57 data-CONSOLE=25 data-python=python3.12 data-os=vtx,fs,snd,gui async defer>#<!--
 
 print("""
 Loading pygame-breakout-wasm from pygame-breakout-wasm.apk
-    Pygbag Version : 0.3.2
-    Template Version : 0.3.0
-    Python  : 3.11
-    CDN URL : https://pygame-web.github.io/archives/0.3/
-    Screen  : {{cookiecutter.width}}x{{cookiecutter.height}}
+    Pygbag Version : 0.9.1
+    Template Version : 0.9.0
+    Python  : 3.12
+    CDN URL : https://pygame-web.github.io/archives/0.9/
+    Screen  : 1280x720
     Title   : pygame-breakout-wasm
     Folder  : pygame-breakout-wasm
     Authors : pgw
@@ -14,15 +14,10 @@ Loading pygame-breakout-wasm from pygame-breakout-wasm.apk
 
 """)
 
-import sys
-import asyncio
-import platform
-import json
-from pathlib import Path
 
 # screen pixels (real, hardware)
-WIDTH=1024  # {{cookiecutter.width}}
-HEIGHT=600  # {{cookiecutter.height}}
+WIDTH=1024  # 1280
+HEIGHT=600  # 720
 
 # reference/idealized screen pixels
 REFX = 1980
@@ -51,9 +46,21 @@ def uy(*argv):
     return acc
 
 
+
+
 # do not rename
-async def sitecustomize():
+async def custom_site():
+
+    import sys
+    import asyncio
+    import platform
+    import json
+    from pathlib import Path
+
+
+
     import embed
+
 
     platform.document.body.style.background = "#7f7f7f"
 
@@ -94,9 +101,10 @@ async def sitecustomize():
         "mount" : {
             "point" : appdir.as_posix(),
             "path" : "/",
-        }
-
+        },
+        "path" : f"/ => {appdir.as_posix()}",
     }
+
 
     track = platform.window.MM.prepare(apk, json.dumps(cfg))
 
@@ -135,12 +143,29 @@ async def sitecustomize():
 
     main = appdir / "assets" / "main.py"
 
-    # test/wait user media interaction
-    if not platform.window.MM.UME:
+    # start async top level machinery and add a console.
+    await TopLevel_async_handler.start_toplevel(platform.shell, console=window.python.config.debug)
 
-        # now that apk is mounted we have access to font cache
-        # but we need to fill __file__ that is not yet set
-        __import__(__name__).__file__ = main
+    # now that apk is mounted we have access to font cache
+    # but we need to fill __file__ that is not yet set
+    __import__(__name__).__file__ = str(main)
+
+
+    # now make a prompt
+    fnt = pygame.sysfont.SysFont("freesans",  uy(80) )
+
+    def ui_callback(pkg, error=None):
+        nonlocal fnt
+        if error:
+            prompt = fnt.render(f"{error}", True, "black")
+        else:
+            prompt = fnt.render(f"Setting [{pkg}] up", True, "black")
+        pg_bar(track.len)
+        screen.blit(prompt, ( marginx+ ux(80), marginy - uy(10) ) )
+        compose()
+
+    # test/wait if user media interaction required
+    if not platform.window.MM.UME:
 
         # now make a prompt
         fnt = pygame.sysfont.SysFont("freesans",  uy(80) )
@@ -154,24 +179,17 @@ async def sitecustomize():
         while not platform.window.MM.UME:
             await asyncio.sleep(.1)
 
+    # cleanup
+    screen.fill( (0,0,0,0) )
+    pygame.display.flip()
 
-    print("145: running main and resuming EventTarget in a few seconds")
-    aio.defer(execfile, (main,), {} )
-
-    # if you don't reach that step
-    # your main.py has an infinite sync loop somewhere !
-    print("150: ready")
-
-
-    # makes all queued events arrive after program has looped a few cycles
-    while not aio.run_called:
-        await asyncio.sleep(.1)
-
-    aio.create_task(platform.EventTarget.process())
+    await shell.runpy(main, callback=ui_callback)
 
 
 
-asyncio.run( sitecustomize() )
+import asyncio
+
+asyncio.run( custom_site() )
 
 
 
@@ -217,14 +235,15 @@ asyncio.run( sitecustomize() )
 config = {
     xtermjs : "1" ,
     _sdl2 : "canvas",
-    user_canvas : 1,
+    user_canvas : 0,
+    user_canvas_managed : 0,
     ume_block : 1,
     can_close : 0,
     archive : "pygame-breakout-wasm",
     gui_debug : 3,
-    cdn : "https://pygame-web.github.io/archives/0.3/",
+    cdn : "https://pygame-web.github.io/archives/0.9/",
     autorun : 0,
-    PYBUILD : "3.11"
+    PYBUILD : "3.12"
 }
 
 </script>
@@ -233,7 +252,14 @@ config = {
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="height=device-height, initial-scale=1.0">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes"/>
+
+    <link rel="prefetch" href="https://pygame-web.github.io/archives/0.9/pythonrc.py">
+    <link rel="prefetch" href="https://pygame-web.github.io/archives/0.9/vt/xterm.js">
+    <link rel="prefetch" href="https://pygame-web.github.io/archives/0.9/vt/xterm-addon-image.js">
+    <link rel="prefetch" href="https://pygame-web.github.io/archives/0.9/vt/xterm-addon-image.js">
 
 
     <link rel="icon" type="image/png" href="favicon.png" sizes="16x16">
@@ -263,7 +289,7 @@ config = {
             border: 0px none;
             background-color: transparent;
             width: 100%;
-            height=100%;
+            height: 100%;
             z-index: 5;
 
             padding: 0;
@@ -315,7 +341,7 @@ config = {
         }
     </style>
 
-    <script src="https://pygame-web.github.io/archives/0.3//browserfs.min.js"></script>
+    <script src="https://pygame-web.github.io/archives/0.9//browserfs.min.js"></script>
 
 </head>
 
@@ -328,7 +354,6 @@ config = {
             <progress value="0" max="100" id="progress"></progress>
         </div>
     </div>
-
 
 
     <canvas class="emscripten" id="canvas"
@@ -368,7 +393,8 @@ height="1px"
             <iframe id="iframe" class="framed" name="iframe"
 width="470px" height="90%"
 allowtransparency="true"
-style="z-index: 10; style="background: #FFFFFF;"
+style="z-index: 10;"
+style="background: #FFFFFF;"
 frameborder="1"
                 allowfullscreen="true"
                 webkitallowfullscreen="true"
@@ -376,7 +402,7 @@ frameborder="1"
                 mozallowfullscreen="true"
                 sandbox="allow-same-origin allow-top-navigation allow-scripts allow-pointer-lock"
                 allow="autoplay; fullscreen *; geolocation; microphone; camera; midi; monetization; xr-spatial-tracking; gamepad; gyroscope; accelerometer; xr; cross-origin-isolated"
-                src="https://pygame-web.github.io/archives/0.3/empty.html"
+                src="https://pygame-web.github.io/archives/0.9/empty.html"
                 scrolling="yes">
             </iframe>
         </div>
@@ -396,7 +422,7 @@ frameborder="1"
     <script type="application/javascript">
 
     async function custom_onload(debug_hidden) {
-        // this is called before anythinh python is loaded
+        // this is called before anything python is loaded
         // make your js customization here
         console.log(__FILE__, "custom_onload")
 
@@ -405,6 +431,7 @@ frameborder="1"
         transfer.hidden = debug_hidden
         info.hidden = debug_hidden
         box.hidden =  debug_hidden
+
     }
 
     function custom_prerun(){
@@ -416,6 +443,14 @@ frameborder="1"
     function custom_postrun(){
         // python main and no VFS filesystem yet.
         console.log(__FILE__, "custom_postrun")
+
+        // prevent ff horizontal scroll
+        window.addEventListener("keydown", function(e) {
+            if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.code) > -1) {
+                if (!python.config.debug)
+                    e.preventDefault();
+            }
+        }, false);
 
     }
 
